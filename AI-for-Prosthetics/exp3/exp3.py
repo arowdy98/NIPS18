@@ -18,7 +18,7 @@ from osim.env import ProstheticsEnv
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='Pendulum-v0')
-    parser.add_argument('--outdir', type=str, default="/home/aditya/NIPS18/output/model")
+    parser.add_argument('--outdir', type=str, default="/home/aditya/NIPS18/output")
     parser.add_argument('--logdir', type=str, default="/home/aditya/NIPS18/output")
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-steps', type=int, default=10 ** 7)
@@ -39,7 +39,7 @@ def main():
     obs_dim = 160
     n_actions = env.action_space.shape[0]
 
-    network = make_network([64, 64])
+    network = make_network([128, 128, 128])
 
     sess = tf.Session()
     sess.__enter__()
@@ -83,6 +83,8 @@ def main():
                 last_obs = obs
                 last_action = action
                 last_value = value
+                action = tf.clip_by_value(action,1e-10,1.0)
+                print(action)
                 obs, reward, done, info = env.step(action)
 
                 sum_of_reward += reward
