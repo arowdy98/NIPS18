@@ -3,19 +3,21 @@ import sys
 import numpy as np
 import gym
 from gym import wrappers
+from osim.env import ProstheticsEnv
+#import roboschool
 #import mujoco_py
 #import pybullet_envs
 
 # hyper parameters
 class Hp():
     def __init__(self):
-        self.main_loop_size = 100
+        self.main_loop_size = 500
         self.horizon = 1000
-        self.step_size = 0.015
-        self.n_directions = 60
-        self.b = 20
+        self.step_size = 0.02
+        self.n_directions = 50
+        self.b = 50
         assert self.b<=self.n_directions, "b must be <= n_directions"
-        self.noise = 0.025
+        self.noise = 0.0075
         self.seed = 1
         ''' chose your favourite '''
         #self.env_name = 'Reacher-v1'
@@ -50,7 +52,14 @@ class Normalizer():
 # linear policy
 class Policy():
     def __init__(self, input_size, output_size):
-        self.theta = np.zeros((output_size, input_size))
+        try:
+            self.theta = np.genfromtxt('policy.out', delimiter = ' ', dtype = np.float32)
+            print("Loading from old policy matrix.")
+        except:
+            self.theta = np.zeros((output_size, input_size))
+            print("Generating new policy matrix.")
+        # print(self.theta)
+        # print(self.theta.shape)
 
     def evaluate(self, input):
         return self.theta.dot(input)
@@ -72,14 +81,18 @@ class Policy():
 
 # training loop
 def train(env, policy, normalizer, hp):
+    print("Starting Training")
     for episode in range(hp.main_loop_size):
+        #print("******")
         # init deltas and rewards
         deltas = policy.sample_deltas()
         reward_positive = [0]*hp.n_directions
         reward_negative = [0]*hp.n_directions
 
         # positive directions
+        print("Positive Start")
         for k in range(hp.n_directions):
+            #print("???????????")
             state = env.reset()
             done = False
             num_plays = 0.
@@ -91,8 +104,10 @@ def train(env, policy, normalizer, hp):
                 reward = max(min(reward, 1), -1)
                 reward_positive[k] += reward
                 num_plays += 1
+            print(k,reward_positive[k])
 
         # negative directions
+        print("Negative Start")
         for k in range(hp.n_directions):
             state = env.reset()
             done = False
@@ -105,6 +120,7 @@ def train(env, policy, normalizer, hp):
                 reward = max(min(reward, 1), -1)
                 reward_negative[k] += reward
                 num_plays += 1
+            print(k,reward_negative[k])
 
         all_rewards = np.array(reward_negative + reward_positive)
         sigma_r = all_rewards.std()
@@ -132,23 +148,28 @@ def train(env, policy, normalizer, hp):
 
         # finish, print:
         print('episode',episode,'reward_evaluation',reward_evaluation)
-
-def mkdir(base, name):
-    path = os.path.join(base, name)
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return path
+        f = open("policy.out",'w')
+        for i in range(num_outputs):
+            for j in range(num_inputs):
+                f.write(str(policy.theta[i][j])+" ")
+            f.write("\n")
+        f.close()
 
 if __name__ == '__main__':
     hp = Hp()
     np.random.seed(hp.seed)
-    work_dir = mkdir('exp', 'brs')
-    monitor_dir = mkdir(work_dir, 'monitor')
+    #work_dir = mkdir('exp', 'brs')
+    #monitor_dir = mkdir(work_dir, 'monitor')
+    env = ProstheticsEnv(visualize=False)
+    #env = gym.make("RoboschoolHalfCheetah-v0")
     #env = gym.make(hp.env_name)
     #env = wrappers.Monitor(env, monitor_dir, force=True)
     #num_inputs = env.observation_space.shape[0]
-    #num_outputs = env.action_space.shape[0]
-    
+    num_outputs = env.action_space.shape[0]
+    num_inputs = 160
     policy = Policy(num_inputs, num_outputs)
     normalizer = Normalizer(num_inputs)
     train(env, policy, normalizer, hp)
+    # f = open("policy.out",'w')
+    # f.write(policy.theta)
+    # f.close()

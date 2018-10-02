@@ -17,6 +17,7 @@ import optimizers
 from policies import *
 import socket
 from shared_noise import *
+from osim.env import ProstheticsEnv
 
 @ray.remote
 class Worker(object):
@@ -32,7 +33,7 @@ class Worker(object):
                  delta_std=0.02):
 
         # initialize OpenAI environment for each worker
-        self.env = gym.make(env_name)
+        self.env = ProstheticsEnv(visualize=False)
         self.env.seed(env_seed)
 
         # each worker gets access to the shared noise table
@@ -160,11 +161,11 @@ class ARSLearner(object):
         logz.configure_output_dir(logdir)
         logz.save_params(params)
         
-        env = gym.make(env_name)
+        env = ProstheticsEnv(visualize=False)
         
         self.timesteps = 0
         self.action_size = env.action_space.shape[0]
-        self.ob_size = env.observation_space.shape[0]
+        self.ob_size = 160
         self.num_deltas = num_deltas
         self.deltas_used = deltas_used
         self.rollout_length = rollout_length
@@ -355,7 +356,7 @@ def run_ars(params):
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
 
-    env = gym.make(params['env_name'])
+    env = ProstheticsEnv(visualize=False)
     ob_dim = env.observation_space.shape[0]
     ac_dim = env.action_space.shape[0]
 
@@ -388,17 +389,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=8)
-    parser.add_argument('--deltas_used', '-du', type=int, default=8)
+    parser.add_argument('--n_directions', '-nd', type=int, default=200)
+    parser.add_argument('--deltas_used', '-du', type=int, default=200)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
-    parser.add_argument('--delta_std', '-std', type=float, default=.03)
-    parser.add_argument('--n_workers', '-e', type=int, default=18)
+    parser.add_argument('--delta_std', '-std', type=float, default=0.0075)
+    parser.add_argument('--n_workers', '-e', type=int, default=2)
     parser.add_argument('--rollout_length', '-r', type=int, default=1000)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
     # for Hopper-v1, Walker2d-v1, and Ant-v1 use shift = 1
     # for Humanoid-v1 used shift = 5
-    parser.add_argument('--shift', type=float, default=0)
+    parser.add_argument('--shift', type=float, default=5)
     parser.add_argument('--seed', type=int, default=237)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str, default='data')
@@ -407,8 +408,8 @@ if __name__ == '__main__':
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
 
     local_ip = socket.gethostbyname(socket.gethostname())
-    ray.init(redis_address= local_ip + ':6379')
-    
+    #ray.init(redis_address= local_ip + ':6379')
+    ray.init(redis_address="10.145.129.138:6379")
     args = parser.parse_args()
     params = vars(args)
     run_ars(params)
