@@ -13,9 +13,9 @@ class Hp():
     def __init__(self):
         self.main_loop_size = 500
         self.horizon = 1000
-        self.step_size = 0.02
-        self.n_directions = 50
-        self.b = 50
+        self.step_size = 0.03
+        self.n_directions = 100
+        self.b = 100
         assert self.b<=self.n_directions, "b must be <= n_directions"
         self.noise = 0.0075
         self.seed = 1
@@ -32,10 +32,38 @@ class Hp():
 # observation filter
 class Normalizer():
     def __init__(self, num_inputs):
-        self.n = np.zeros(num_inputs)
-        self.mean = np.zeros(num_inputs)
-        self.mean_diff = np.zeros(num_inputs)
-        self.var = np.zeros(num_inputs)
+        try:
+            self.n = np.genfromtxt('n.out', delimiter = ' ', dtype = np.float32)
+            print("Loading from old n matrix.")
+        except:
+            self.n = np.zeros(num_inputs)
+            print("Generating new n matrix.")
+
+        try:
+            self.mean = np.genfromtxt('mean.out', delimiter = ' ', dtype = np.float32)
+            print("Loading from old mean matrix.")
+        except:
+            self.mean = np.zeros(num_inputs)
+            print("Generating new mean matrix.")
+
+        try:
+            self.mean_diff = np.genfromtxt('mean_diff.out', delimiter = ' ', dtype = np.float32)
+            print("Loading from old Mean diff matrix.")
+        except:
+            self.mean_diff = np.zeros(num_inputs)
+            print("Generating new Mean diff matrix.")
+
+        try:
+            self.var = np.genfromtxt('var.out', delimiter = ' ', dtype = np.float32)
+            print("Loading from old Variance matrix.")
+        except:
+            self.var = np.zeros(num_inputs)
+            print("Generating new Variance matrix.")
+
+        # self.n = np.zeros(num_inputs)
+        # self.mean = np.zeros(num_inputs)
+        # self.mean_diff = np.zeros(num_inputs)
+        # self.var = np.zeros(num_inputs)
 
     def observe(self, x):
         self.n += 1.
@@ -148,11 +176,36 @@ def train(env, policy, normalizer, hp):
 
         # finish, print:
         print('episode',episode,'reward_evaluation',reward_evaluation)
+
         f = open("policy.out",'w')
         for i in range(num_outputs):
             for j in range(num_inputs):
                 f.write(str(policy.theta[i][j])+" ")
             f.write("\n")
+        f.close()
+
+        f = open("n.out",'w')
+        for j in range(num_inputs):
+            f.write(str(normalizer.n[j])+" ")
+        f.write("\n")
+        f.close()
+
+        f = open("mean.out",'w')
+        for j in range(num_inputs):
+            f.write(str(normalizer.mean[j])+" ")
+        f.write("\n")
+        f.close()
+
+        f = open("mean_diff.out",'w')
+        for j in range(num_inputs):
+            f.write(str(normalizer.mean_diff[j])+" ")
+        f.write("\n")
+        f.close()
+
+        f = open("var.out",'w')
+        for j in range(num_inputs):
+            f.write(str(normalizer.var[j])+" ")
+        f.write("\n")
         f.close()
 
 if __name__ == '__main__':
