@@ -9,53 +9,6 @@ from osim.env import ProstheticsEnv
 #import pybullet_envs
 
 # hyper parameters
-
-def dict_to_list(state_desc):
-    res = []
-
-    # Body Observations
-    for info_type in ['body_pos', 'body_pos_rot',
-                      'body_vel', 'body_vel_rot',
-                      'body_acc', 'body_acc_rot']:
-        for body_part in ['calcn_l', 'talus_l', 'tibia_l', 'toes_l',
-                          'femur_l', 'femur_r', 'head', 'pelvis',
-                          'torso', 'pros_foot_r', 'pros_tibia_r']:
-            res += state_desc[info_type][body_part]
-
-    # Joint Observations
-    # Neglecting `back_0`, `mtp_l`, `subtalar_l` since they do not move
-    for info_type in ['joint_pos', 'joint_vel', 'joint_acc']:
-        for joint in ['ankle_l', 'ankle_r', 'back', 'ground_pelvis',
-                      'hip_l', 'hip_r', 'knee_l', 'knee_r']:
-            res += state_desc[info_type][joint]
-
-    # Muscle Observations
-    for muscle in ['abd_l', 'abd_r', 'add_l', 'add_r', 
-                   'bifemsh_l', 'bifemsh_r', 'gastroc_l',
-                   'glut_max_l', 'glut_max_r', 
-                   'hamstrings_l', 'hamstrings_r',
-                   'iliopsoas_l', 'iliopsoas_r', 'rect_fem_l', 'rect_fem_r',
-                   'soleus_l', 'tib_ant_l', 'vasti_l', 'vasti_r']:
-        res.append(state_desc['muscles'][muscle]['activation'])
-        res.append(state_desc['muscles'][muscle]['fiber_force'])
-        res.append(state_desc['muscles'][muscle]['fiber_length'])
-        res.append(state_desc['muscles'][muscle]['fiber_velocity'])
-
-    # Force Observations
-    # Neglecting forces corresponding to muscles as they are redundant with
-    # `fiber_forces` in muscles dictionaries
-    for force in ['AnkleLimit_l', 'AnkleLimit_r',
-                  'HipAddLimit_l', 'HipAddLimit_r',
-                  'HipLimit_l', 'HipLimit_r', 'KneeLimit_l', 'KneeLimit_r']:
-        res += state_desc['forces'][force]
-
-        # Center of Mass Observations
-        res += state_desc['misc']['mass_center_pos']
-        res += state_desc['misc']['mass_center_vel']
-        res += state_desc['misc']['mass_center_acc']
-
-    return np.array(res)
-
 class Hp():
     def __init__(self):
         self.main_loop_size = 500
@@ -168,16 +121,14 @@ def train(env, policy, normalizer, hp):
         print("Positive Start")
         for k in range(hp.n_directions):
             #print("???????????")
-            state = env.reset(project=False)
-            state = dict_to_list(state)
+            state = env.reset()
             done = False
             num_plays = 0.
             while not done and num_plays<hp.horizon:
                 normalizer.observe(state)
                 state = normalizer.normalize(state)
                 action = policy.positive_perturbation(state, deltas[k])
-                state, reward, done, _ = env.step(action,project = False)
-                state = dict_to_list(state)
+                state, reward, done, _ = env.step(action)
                 reward = max(min(reward, 1), -1)
                 reward_positive[k] += reward
                 num_plays += 1
@@ -186,16 +137,14 @@ def train(env, policy, normalizer, hp):
         # negative directions
         print("Negative Start")
         for k in range(hp.n_directions):
-            state = env.reset(project=False)
-            state = dict_to_list(state)
+            state = env.reset()
             done = False
             num_plays = 0.
             while not done and num_plays<hp.horizon:
                 normalizer.observe(state)
                 state = normalizer.normalize(state)
                 action = policy.negative_perturbation(state, deltas[k])
-                state, reward, done, _ = env.step(action,project = False)
-                state = dict_to_list(state)
+                state, reward, done, _ = env.step(action)
                 reward = max(min(reward, 1), -1)
                 reward_negative[k] += reward
                 num_plays += 1
@@ -213,8 +162,7 @@ def train(env, policy, normalizer, hp):
         policy.update(rollouts, sigma_r)
 
         # evaluate
-        state = env.reset(project=False)
-        state = dict_to_list(state)
+        state = env.reset()
         done = False
         num_plays = 1.
         reward_evaluation = 0
@@ -222,8 +170,7 @@ def train(env, policy, normalizer, hp):
             normalizer.observe(state)
             state = normalizer.normalize(state)
             action = policy.evaluate(state)
-            state, reward, done, _ = env.step(action,project = False)
-            state = dict_to_list(state)
+            state, reward, done, _ = env.step(action)
             reward_evaluation += reward
             num_plays += 1
 
@@ -272,7 +219,7 @@ if __name__ == '__main__':
     #env = wrappers.Monitor(env, monitor_dir, force=True)
     #num_inputs = env.observation_space.shape[0]
     num_outputs = env.action_space.shape[0]
-    num_inputs = 413
+    num_inputs = 160
     policy = Policy(num_inputs, num_outputs)
     normalizer = Normalizer(num_inputs)
     train(env, policy, normalizer, hp)
