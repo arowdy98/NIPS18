@@ -13,11 +13,11 @@ class Hp():
     def __init__(self):
         self.main_loop_size = 500
         self.horizon = 1000
-        self.step_size = 0.03
-        self.n_directions = 100
-        self.b = 100
+        self.step_size = 0.035
+        self.n_directions = 125
+        self.b = 125
         assert self.b<=self.n_directions, "b must be <= n_directions"
-        self.noise = 0.0075
+        self.noise = 0.01#0.0075
         self.seed = 1
         ''' chose your favourite '''
         #self.env_name = 'Reacher-v1'
